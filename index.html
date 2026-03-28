@@ -493,6 +493,78 @@
 .price-btn.alt{
   background:linear-gradient(135deg,#16a34a,#22c55e);
 }
+
+
+/* Payment quick-link modal */
+.payment-modal-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,.45);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+  padding:20px;
+}
+.payment-modal-overlay.show{display:flex}
+.payment-modal{
+  width:min(560px,100%);
+  background:rgba(255,255,255,.96);
+  border:1px solid rgba(56,189,248,.20);
+  border-radius:30px;
+  box-shadow:0 24px 60px rgba(14,165,233,.20);
+  padding:28px;
+  text-align:center;
+}
+.payment-modal h3{
+  margin:0 0 10px 0;
+  color:#082f49;
+  font-size:28px;
+}
+.payment-modal p{
+  margin:0 0 16px 0;
+  color:#4f6d81;
+  line-height:2;
+  font-size:15px;
+}
+.payment-plan-box{
+  margin:16px 0;
+  background:#f0f9ff;
+  border:1px solid rgba(56,189,248,.16);
+  border-radius:22px;
+  padding:18px;
+  color:#075985;
+  font-weight:800;
+  line-height:2;
+}
+.payment-modal-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-top:16px;
+}
+.payment-modal-btn{
+  border:none;
+  border-radius:18px;
+  min-height:50px;
+  padding:12px 16px;
+  font-size:15px;
+  font-weight:900;
+  cursor:pointer;
+}
+.payment-modal-btn.primary{
+  color:#fff;
+  background:linear-gradient(135deg,#38bdf8,#0ea5e9);
+  box-shadow:0 12px 24px rgba(14,165,233,.20);
+}
+.payment-modal-btn.secondary{
+  color:#075985;
+  background:#f0f9ff;
+  border:1px solid rgba(56,189,248,.18);
+}
+@media (max-width:680px){
+  .payment-modal-actions{grid-template-columns:1fr;}
+}
 </style>
 </head>
 <body>
@@ -564,11 +636,11 @@
 </div>
 <div class="subpanel">
 <div class="teacher-entry-top-actions">
-<button class="teacher-top-btn" onclick="showScreen('subscribeScreen')">
+<button class="teacher-top-btn" onclick="startPayment('monthly')">
     الاشتراك
     <small>بدء اشتراك جديد</small>
 </button>
-<button class="teacher-top-btn" onclick="showScreen('renewScreen')">
+<button class="teacher-top-btn" onclick="startPayment('term')">
     إعادة الاشتراك
     <small>تجديد الاشتراك الحالي</small>
 </button>
@@ -634,7 +706,7 @@
 <li>التقييم والإشراف المدرسي ❌</li>
 </ul>
 <div><span class="old-price">150 ريال</span><span class="new-price">120 ريال</span></div>
-<button class="price-btn" onclick="showScreen('subscribeScreen')">اشترك الآن</button></div>
+<button class="price-btn" onclick="startPayment('monthly')">اشترك الآن</button></div>
 <!-- الترم -->
 <div class="price-card featured"><div class="price-badge">الأكثر اختيارًا</div>
 <h5>اشتراك ترم كامل</h5>
@@ -656,7 +728,7 @@
 <li>التقييم والإشراف المدرسي ✔️</li>
 </ul>
 <div><span class="old-price">600 ريال</span><span class="new-price">450 ريال</span></div>
-<button class="price-btn" onclick="showScreen('renewScreen')">اشترك الآن</button></div>
+<button class="price-btn" onclick="startPayment('term')">اشترك الآن</button></div>
 <!-- السنوي -->
 <div class="price-card"><div class="price-badge">الأفضل</div>
 <h5>الاشتراك السنوي</h5>
@@ -678,7 +750,7 @@
 <li>التقييم والإشراف المدرسي ✔️</li>
 </ul>
 <div><span class="old-price">1200 ريال</span><span class="new-price">900 ريال</span></div>
-<button class="price-btn alt" onclick="showScreen('subscribeScreen')">اشترك الآن</button></div>
+<button class="price-btn alt" onclick="startPayment('yearly')">اشترك الآن</button></div>
 </div>
 </div>
 </div>
@@ -1096,5 +1168,77 @@
       setSubStatus('renewStatus','تم إرسال طلب إعادة الاشتراك كواجهة أولية. الخطوة التالية ربط النموذج بقاعدة بيانات أو نظام تجديد فعلي.');
     });
   </script>
+
+<div class="payment-modal-overlay" id="paymentModalOverlay">
+<div class="payment-modal">
+<h3>رابط الدفع غير مضاف بعد</h3>
+<p>
+      تم تجهيز الأزرار لفتح الدفع مباشرة. فقط أضيفي روابط الدفع الفعلية من مويسر داخل الكود،
+      وبعدها سيفتح الدفع فورًا حسب الباقة المختارة.
+    </p>
+<div class="payment-plan-box" id="paymentPlanBox">
+      الباقة المختارة: —
+    </div>
+<div class="payment-modal-actions">
+<button class="payment-modal-btn primary" onclick="copyPaymentSetup()" type="button">نسخ مكان التعديل</button>
+<button class="payment-modal-btn secondary" onclick="closePaymentModal()" type="button">إغلاق</button>
+</div>
+</div>
+</div>
+
+<script>
+const PAYMENT_LINKS = {
+  monthly: "",
+  term: "",
+  yearly: ""
+};
+
+const PAYMENT_PLANS = {
+  monthly: { title: "الاشتراك الشهري", amount: "١٢٠ ريال" },
+  term: { title: "اشتراك الترم", amount: "٤٥٠ ريال" },
+  yearly: { title: "الاشتراك السنوي", amount: "٩٠٠ ريال" }
+};
+
+function startPayment(plan){
+  const selectedPlan = PAYMENT_PLANS[plan];
+  const paymentLink = PAYMENT_LINKS[plan];
+
+  if(paymentLink && paymentLink.trim() !== ""){
+    window.location.href = paymentLink;
+    return;
+  }
+
+  const box = document.getElementById("paymentPlanBox");
+  if(box && selectedPlan){
+    box.innerHTML = "الباقة المختارة: " + selectedPlan.title + "<br>السعر: " + selectedPlan.amount;
+  }
+
+  const modal = document.getElementById("paymentModalOverlay");
+  if(modal){
+    modal.classList.add("show");
+  }
+}
+
+function closePaymentModal(){
+  const modal = document.getElementById("paymentModalOverlay");
+  if(modal){
+    modal.classList.remove("show");
+  }
+}
+
+function copyPaymentSetup(){
+  const setupText = 'عدلي هذا الجزء داخل الملف:\nconst PAYMENT_LINKS = {\n  monthly: "رابط دفع الشهري من مويسر",\n  term: "رابط دفع الترم من مويسر",\n  yearly: "رابط دفع السنوي من مويسر"\n};';
+
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(setupText).then(() => {
+      alert("تم نسخ مكان التعديل بنجاح");
+    }).catch(() => {
+      alert(setupText);
+    });
+  } else {
+    alert(setupText);
+  }
+}
+</script>
 </body>
 </html>
